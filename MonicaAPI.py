@@ -75,3 +75,55 @@ def get_reminders():
                     name_print = str(contact_json[contact_index]["complete_name"]) + ") "
                     reminders = reminders + date_print + name_print + message + "\n"
     return reminders
+
+def get_contacts():
+    # Get host URL and append "api"
+    url_file = open('monica host url.txt', 'r')
+    for url in url_file:
+        monica_url = url.rstrip('\0')
+    url_file.close()
+    monica_url = monica_url + "api/"
+
+    # Get authentication token
+    token_file = open('monica api token.txt', 'r')
+    for token in token_file:
+        monica_token = token.rstrip('\0')
+    token_file.close()
+
+    # Header for auth
+    auth_header = {'Authorization': 'Bearer ' + token}
+
+    # Get contacts
+    # Note that for whatever reason the limit is 100 contacts per page
+    # Page flipping is uhhh... I don't feel like implementing that
+    contacts_url = monica_url + "contacts/?&limit=100"
+    #print("GET reqeust to: " + contacts_url)
+    r=requests.get(contacts_url, headers=auth_header)
+    contact_json = r.json()['data']
+    
+    # Empty contact list
+    list_contact = []
+    # Compiles a dict of name:id into a list and spits it out
+    for contact_index, item in enumerate(contact_json):
+        contact_dict = {"name":contact_json[contact_index]["complete_name"], "id": contact_json[contact_index]["id"]}
+        list_contact.append(contact_dict)
+    return list_contact
+
+def post_reminders(reminder_list):
+    # Get host URL and append "api"
+    url_file = open('monica host url.txt', 'r')
+    for url in url_file:
+        monica_url = url.rstrip('\0')
+    url_file.close()
+    monica_url = monica_url + "api/"
+    # Get authentication token
+    token_file = open('monica api token.txt', 'r')
+    for token in token_file:
+        monica_token = token.rstrip('\0')
+    token_file.close()
+    # Header for auth
+    auth_header = {'Authorization': 'Bearer ' + token}
+    # Reminder url
+    reminder_url = monica_url + "reminders"
+    r=requests.post(reminder_url, headers=auth_header, data=reminder_list)
+    print(r)
