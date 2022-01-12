@@ -2,6 +2,7 @@ import requests
 from datetime import datetime, timedelta
 from dateutil.rrule import rrule, WEEKLY, MONTHLY, YEARLY
 
+# TODO make this a dict so it can be sorted
 def get_reminders():
     # Get host URL and append "api"
     url_file = open('monica host url.txt', 'r')
@@ -127,3 +128,107 @@ def post_reminders(reminder_list):
     reminder_url = monica_url + "reminders"
     r=requests.post(reminder_url, headers=auth_header, data=reminder_list)
     print(r)
+
+# POST Journal somehow doesn't appear in the webpage
+# Journal is a dict with 2 keys - title and post
+def post_journal(journal):
+    # Get host URL and append "api"
+    url_file = open('monica host url.txt', 'r')
+    for url in url_file:
+        monica_url = url.rstrip('\0')
+    url_file.close()
+    monica_url = monica_url + "api/"
+    # Get authentication token
+    token_file = open('monica api token.txt', 'r')
+    for token in token_file:
+        monica_token = token.rstrip('\0')
+    token_file.close()
+    # Header for auth
+    auth_header = {'Authorization': 'Bearer ' + token}
+
+    # Journal url
+    journal_url = monica_url + "journal"
+    r=requests.post(journal_url, headers=auth_header, data=journal)
+    # This returns the POST-ed journal when successful
+    return r.json()['data']
+
+# Returns a list of journal dicts with 2 keys
+# 'title' and 'post'
+def get_journal():
+    # Get host URL and append "api"
+    url_file = open('monica host url.txt', 'r')
+    for url in url_file:
+        monica_url = url.rstrip('\0')
+    url_file.close()
+    monica_url = monica_url + "api/"
+    # Get authentication token
+    token_file = open('monica api token.txt', 'r')
+    for token in token_file:
+        monica_token = token.rstrip('\0')
+    token_file.close()
+    # Header for auth
+    auth_header = {'Authorization': 'Bearer ' + token}
+
+    # Reminder url
+    journal_url = monica_url + "journal"
+    r=requests.get(journal_url, headers=auth_header)
+    return r.json()['data']
+
+# Get notes will be abit more specific, we will get notes for specific contacts instead
+def get_notes(contact_id):
+    # Get host URL and append "api"
+    url_file = open('monica host url.txt', 'r')
+    for url in url_file:
+        monica_url = url.rstrip('\0')
+    url_file.close()
+    monica_url = monica_url + "api/"
+    # Get authentication token
+    token_file = open('monica api token.txt', 'r')
+    for token in token_file:
+        monica_token = token.rstrip('\0')
+    token_file.close()
+    # Header for auth
+    auth_header = {'Authorization': 'Bearer ' + token}
+
+    # Notes url
+    notes_url = monica_url + "contacts/" + str(contact_id) + "/notes"
+    r=requests.get(notes_url, headers=auth_header)
+    
+    notes_json = r.json()['data']
+    list_notes = []
+    # Compiles a dict of name:id into a list and spits it out
+    for note_index, item in enumerate(notes_json):
+        updated_at = notes_json[note_index]["updated_at"]
+        updated_at = datetime.strptime(updated_at, '%Y-%m-%dT%H:%M:%SZ')
+        # Timezone correction
+        updated_at = updated_at + timedelta(hours=8)
+        notes_dict = {"body"        :notes_json[note_index]["body"],
+                      "is_favorited":notes_json[note_index]["is_favorited"],
+                      "updated_at"  :updated_at}
+        list_notes.append(notes_dict)
+    return list_notes
+
+# POST-ing notes is way more straight forward
+# We will POST a dict with 3 keys -
+# body | text of the note
+# contact_id
+# is_favorited | the web dashboard highlights favorited notes.
+def post_notes(notes):
+    # Get host URL and append "api"
+    url_file = open('monica host url.txt', 'r')
+    for url in url_file:
+        monica_url = url.rstrip('\0')
+    url_file.close()
+    monica_url = monica_url + "api/"
+    # Get authentication token
+    token_file = open('monica api token.txt', 'r')
+    for token in token_file:
+        monica_token = token.rstrip('\0')
+    token_file.close()
+    # Header for auth
+    auth_header = {'Authorization': 'Bearer ' + token}
+    # Notes url
+    notes_url = monica_url + "notes"
+    r=requests.post(notes_url, headers=auth_header, data=notes)
+    # Returns note that was POST-ed if successfull
+    return r.json()['data']
