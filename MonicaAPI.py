@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from dateutil.rrule import rrule, WEEKLY, MONTHLY, YEARLY
 
 # TODO make this a dict so it can be sorted
-def get_reminders():
+def get_reminders(days):
     # Get host URL and append "api"
     url_file = open('monica host url.txt', 'r')
     for url in url_file:
@@ -28,10 +28,9 @@ def get_reminders():
     r=requests.get(contacts_url, headers=auth_header)
     contact_json = r.json()['data']
     # Date offsets for us to do comparisons on the date
-    time_offset = timedelta(weeks=24)
-    month_offset = timedelta(weeks=4)
-    # Iterate through contacts to gather a full list of reminders
-    reminders = str("")
+    three_month_offset = timedelta(weeks=24)
+    time_offset = timedelta(days=days)
+    reminder_list = []
     for contact_index, item in enumerate(contact_json):
         # Print and save contact ID
         # print("\n\nID: " + str(contact_json[contact_index]["id"]))
@@ -46,36 +45,49 @@ def get_reminders():
         # Iterate through each reminder
         for reminder_index, item in enumerate(reminder_json):
             # Get title
-            message = reminder_json[reminder_index]['title']
+            reminder = {'message':reminder_json[reminder_index]['title'],
             # Get frequency type
-            reminder_freq = reminder_json[reminder_index]['frequency_type']
+            'reminder_freq':reminder_json[reminder_index]['frequency_type'],
             # Get how often to repeat this reminder
-            reminder_period = reminder_json[reminder_index]['frequency_number']
+            'reminder_period':reminder_json[reminder_index]['frequency_number'],
             # Get initial date of reminder and convert to datetime format
-            reminder_initial_date = reminder_json[reminder_index]['initial_date']
-            reminder_initial_date = datetime.strptime(reminder_initial_date, '%Y-%m-%dT%H:%M:%SZ')
+            'reminder_initial_date':reminder_json[reminder_index]['initial_date'],
+            'complete_name':contact_json[contact_index]["complete_name"]}
+            reminder['reminder_initial_date'] = datetime.strptime(reminder['reminder_initial_date'], '%Y-%m-%dT%H:%M:%SZ')
             # Now we generate a full list of dates
             # This is list is basically initial date + how often to repeat
-            if(reminder_freq == "year"):
-                list_dates = list(rrule(YEARLY, dtstart=reminder_initial_date, interval=reminder_period, until=(datetime.now() + time_offset)))
-            if(reminder_freq == "month"):
-                list_dates = list(rrule(MONTHLY, dtstart=reminder_initial_date, interval=reminder_period, until=(datetime.now() + time_offset)))
-            if(reminder_freq == "week"):
-                list_dates = list(rrule(WEEKLY, dtstart=reminder_initial_date, interval=reminder_period, until=(datetime.now() + time_offset)))
+            if(reminder['reminder_freq'] == "year"):
+                list_dates = list(rrule(YEARLY, dtstart=reminder['reminder_initial_date'], interval=reminder['reminder_period'], until=(datetime.now() + time_offset + three_month_offset)))
+            if(reminder['reminder_freq'] == "month"):
+                list_dates = list(rrule(MONTHLY, dtstart=reminder['reminder_initial_date'], interval=reminder['reminder_period'], until=(datetime.now() + time_offset + three_month_offset)))
+            if(reminder['reminder_freq'] == "week"):
+                list_dates = list(rrule(WEEKLY, dtstart=reminder['reminder_initial_date'], interval=reminder['reminder_period'], until=(datetime.now() + time_offset + three_month_offset)))
             else:
-                if datetime.now().date() <= reminder_initial_date.date() <= (datetime.now().date() + month_offset):
-                    date_print = "(" + str(reminder_initial_date.date()) + ": "
-                    name_print = str(contact_json[contact_index]["complete_name"]) + ") "
-                    reminders = reminders + date_print + name_print + message + "\n"
+                if datetime.now().date() <= reminder['reminder_initial_date'].date() <= (datetime.now().date() + time_offset):
+                    reminder_list.append(reminder)
+                    #date_print = "(" + str(reminder_initial_date.date()) + ": "
+                    #name_print = str(contact_json[contact_index]["complete_name"]) + ") "
+                    #reminders = reminders + date_print + name_print + message + "\n"
             # Now that we have the full list
             # We iterate through this list and compare the reminders that are within the today and the next 4 weeks
             # We treat all events as an all day event
             for reminder_date in list_dates:
-                if datetime.now().date() <= reminder_date.date() <= (datetime.now().date() + month_offset):
-                    date_print = "(" + str(reminder_date.date()) + ": "
-                    name_print = str(contact_json[contact_index]["complete_name"]) + ") "
-                    reminders = reminders + date_print + name_print + message + "\n"
-    return reminders
+                if datetime.now().date() <= reminder_date.date() <= (datetime.now().date() + time_offset):
+                    reminder['reminder_initial_date'] = reminder_date
+                    reminder_list.append(reminder)
+                    #date_print = "(" + str(reminder_date.date()) + ": "
+                    #name_print = str(contact_json[contact_index]["complete_name"]) + ") "
+                    #reminders = reminders + date_print + name_print + message + "\n"
+    # Here we will sort the list
+    reminder_list = sorted(reminder_list, key=lambda d: d['reminder_initial_date'])
+    # Ehh... gotta convert this back into string format to preserve compatibility LUL
+    # Iterate through contacts to gather a full list of reminders
+    reminders_string = str("")
+    for reminder in reminder_list:
+        date_print = "(" + str(reminder['reminder_initial_date'].date()) + ": "
+        name_print = str(reminder["complete_name"]) + ") "
+        reminders_string = reminders_string + date_print + name_print + reminder['message'] + "\n" 
+    return reminders_string
 
 def get_contacts():
     # Get host URL and append "api"

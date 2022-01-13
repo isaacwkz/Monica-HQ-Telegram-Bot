@@ -1,6 +1,8 @@
 ######### System Imports #########
 import logging
-from datetime import datetime
+from datetime import datetime, tzinfo, time
+import pytz
+from calendar import monthrange
 ######### Telegram Imports #########
 from telegram import ReplyKeyboardMarkup, message
 from telegram import ReplyKeyboardRemove
@@ -20,6 +22,7 @@ import requests
 import MonicaAPI
 import TeleAddReminders
 import TeleNotes
+import TelePushNotifications
 
 #logging.basicConfig(filename='runtime.log', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -78,7 +81,7 @@ filter_cancel_command = FilterCancelWord()
 ################################################# Command handlers below #################################################
 
 ########################################################################################
-# /start command callback
+# /start command handler
 def start_cb(update: Update, context: CallbackContext):
     logging.info(str(update.message.chat.username) + " started the BOT")
     context.bot.send_message(chat_id=update.effective_chat.id, text="Hi there, " + str(update.message.chat.username) + "!~")
@@ -87,18 +90,42 @@ start_handler = CommandHandler('start', start_cb, filters=filter_userid)
 dispatcher.add_handler(start_handler)
 
 ########################################################################################
-# /reminders command callback
+# /notify and /stop_notification command handler
+notification_handler = CommandHandler('notify', TelePushNotifications.start_notification_cb, filters=filter_userid)
+stop_notification_handler = CommandHandler('stop_notification', TelePushNotifications.stop_notifications_cb, filters=filter_userid)
+dispatcher.add_handler(notification_handler)
+dispatcher.add_handler(stop_notification_handler)
+
+########################################################################################
+# /getreminders command handler
 def reminders_cb(update: Update, context: CallbackContext):
-    logging.info(str(update.message.chat.username) + " checked for reminders")
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Reminders for the month!")
-    reminders = MonicaAPI.get_reminders()
-    context.bot.send_message(chat_id=update.effective_chat.id, text=str(reminders))
+    days_to_check = 0
+    # Hacky way to get a param from user
+    # TODO maybe?
+    try:
+        days_to_check = int(context.args[0])
+    except (IndexError, ValueError):
+        pass
+    logging.info(str(update.message.chat.username) + " is checking for reminders")
+    if days_to_check:
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Reminders for the next " + str(days_to_check) + " days!")
+        reminders = MonicaAPI.get_reminders(days_to_check)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=str(reminders))
+    else:
+    # Get reminders for this month
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Reminders for the month!")
+        today = datetime.now().day
+        year = datetime.now().year
+        month = datetime.now().month
+        num_days = monthrange(year, month)[1]
+        reminders = MonicaAPI.get_reminders(num_days-today)
+        context.bot.send_message(chat_id=update.effective_chat.id, text=str(reminders))
 # Add /reminders command callback to command queue
 reminders_handler = CommandHandler('getreminders', reminders_cb, filters=filter_userid)
 dispatcher.add_handler(reminders_handler)
 
 ########################################################################################
-# /ipaddress command callback
+# /ipaddress command handler
 def get_ip_address_cb(update: Update, context: CallbackContext):
     logging.info(str(update.message.chat.username) + " is checking the external IP address")
     r=requests.get(url="http://api.ipify.org/")
@@ -150,7 +177,9 @@ def command_list_cb(update: Update, context: CallbackContext):
                     "/getreminders  | get full list of reminders\n" +
                     "/addreminders  | adds a new reminder\n" +
                     "/addnotes  | adds notes to a contact\n" +
-                    "/getnotes  | gets notes for a contact\n" + 
+                    "/getnotes  | gets notes for a contact\n" +
+                    "/notify  | sends notifications\n" +
+                    "/stop_notification  | stops notifications\n" + 
                     ############## Others ###################
                     "--------------------------------------------------\n" +
                     "/ipaddress  | gets current IP of bot")
@@ -176,3 +205,4 @@ exception_catcher_handler = MessageHandler(filter_userid & ~filter_command_list,
 dispatcher.add_handler(exception_catcher_handler)
 
 updater.start_polling()
+updater.idle()
