@@ -144,6 +144,21 @@ def addreminders_freq_type_cb(update: Update, context: CallbackContext) -> int:
         context.user_data['rm_freq_type'] = "week"
     elif freq_type == "none":
         context.user_data['rm_freq_type'] = "one_time"
+        data = context.user_data
+        reminder_post = {'title':str(data['rm_title']),
+                        'description':str(data['rm_description']),
+                        'initial_date':str(data['rm_date'].date()),
+                        'frequency_type':str(data['rm_freq_type']),
+                        'frequency_number':"1",
+                        'contact_id':str(data['rm_contact_id'])}
+        logging.info(str(update.message.chat.username) + " is setting a reminder: " + str(reminder_post))
+        response = MonicaAPI.post_reminders(reminder_post)
+        logging.info(str(update.message.chat.username) + " trigger an event : " + str(response))
+        update.message.reply_text(text="Done!")
+
+        context.user_data.clear()
+        return ConversationHandler.END
+
     else:
         message_freq_type = "How often do you want to repeat this reminder?"
         freq_type = [["yearly", "monthly"],["weekly", "none"]]
@@ -165,7 +180,8 @@ def addreminders_freq_period_cb(update: Update, context: CallbackContext) -> int
                     'contact_id':str(data['rm_contact_id'])}
     logging.info(str(update.message.chat.username) + " is setting a reminder: " + str(reminder_post))
     
-    MonicaAPI.post_reminders(reminder_post)
+    response = MonicaAPI.post_reminders(reminder_post)
+    logging.info(str(update.message.chat.username) + " trigger an event : " + str(response))
     update.message.reply_text(text="Done!")
 
     context.user_data.clear()

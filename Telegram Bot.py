@@ -23,6 +23,8 @@ import MonicaAPI
 import TeleAddReminders
 import TeleNotes
 import TelePushNotifications
+import TeleAddContact
+import TeleGifts
 
 #logging.basicConfig(filename='runtime.log', format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -104,6 +106,7 @@ def reminders_cb(update: Update, context: CallbackContext):
     # TODO maybe?
     try:
         days_to_check = int(context.args[0])
+    # If no param is supplied we skip
     except (IndexError, ValueError):
         pass
     logging.info(str(update.message.chat.username) + " is checking for reminders")
@@ -151,6 +154,35 @@ add_reminder_handler = ConversationHandler( entry_points=[CommandHandler('addrem
 # Add to scheduler
 dispatcher.add_handler(add_reminder_handler)
 
+################################################# Add Contact Conversation Handler #################################################
+
+add_contacts_handler = ConversationHandler(entry_points=[CommandHandler('addcontact', TeleAddContact.addcontact_cb, filters=filter_userid)],
+                                        states={TeleAddContact.CONTACT_NICKNAME: [MessageHandler(Filters.text & filter_userid, TeleAddContact.addcontact_nickname_cb)],
+                                                TeleAddContact.CONTACT_GENDER: [MessageHandler(filter_userid & Filters.text, TeleAddContact.addcontact_gender_cb)],
+                                                TeleAddContact.CONTACT_BIRTHDAY: [MessageHandler(filter_userid & Filters.text, TeleAddContact.addcontact_birthday_cb)],
+                                                TeleAddContact.CONTACT_BD_CALENDAR: [MessageHandler(filter_userid & Filters.text, TeleAddContact.addcontact_calendar_cb)],
+                                                TeleAddContact.CONTACT_BD_CL_UPDATE: [CallbackQueryHandler(TeleAddContact.addcontact_cl_update_cb)]},
+                                        fallbacks=[CommandHandler('cancel', TeleAddContact.addcontact_cancel_cb, filters=filter_userid)],)
+# Add to scheduler
+dispatcher.add_handler(add_contacts_handler)
+
+################################################# Get Gift Idea for Contact #################################################
+
+get_notes_handler = ConversationHandler(entry_points=[CommandHandler('getgiftidea', TeleGifts.getgiftidea_cb, filters=filter_userid)],
+                                        states={TeleGifts.GET_GIFTIDEA_CONTACT: [MessageHandler(filter_userid, TeleGifts.getgiftidea_contact_id_cb)]},
+                                        fallbacks=[CommandHandler('cancel', TeleGifts.getgiftidea_cancel_cb, filters=filter_userid)],)
+# Add to scheduler
+dispatcher.add_handler(get_notes_handler)
+
+################################################# Add Gift Idea Conversation Handler #################################################
+
+add_gift_idea_handler = ConversationHandler(entry_points=[CommandHandler('addgiftidea', TeleGifts.addgiftidea_cb, filters=filter_userid)],
+                                            states={TeleGifts.GIFT_IDEA: [MessageHandler(Filters.regex('^\d+$') & filter_userid, TeleGifts.addgiftidea_comments_cb)],
+                                                    TeleGifts.GIFT_IDEA_END: [MessageHandler(filter_userid & Filters.text, TeleGifts.addgiftidea_done_cb)]},
+                                            fallbacks=[CommandHandler('cancel', TeleGifts.addgiftidea_cancel_cb, filters=filter_userid)],)
+# Add to scheduler
+dispatcher.add_handler(add_gift_idea_handler)
+
 ################################################# Add Notes Conversation Handler #################################################
 
 add_notes_handler = ConversationHandler(entry_points=[CommandHandler('addnotes', TeleNotes.addnotes_cb, filters=filter_userid)],
@@ -174,10 +206,13 @@ dispatcher.add_handler(get_notes_handler)
 def command_list_cb(update: Update, context: CallbackContext):
     command_list = ("/start  | ping/echoes back username\n" +
                     "--------------------- Monica ---------------------\n"
-                    "/getreminders  | get full list of reminders\n" +
+                    "/getreminders (int)  | gets reminders for number of days - if no param, gets for 1 month\n" +
                     "/addreminders  | adds a new reminder\n" +
                     "/addnotes  | adds notes to a contact\n" +
                     "/getnotes  | gets notes for a contact\n" +
+                    "/addgiftidea  | adds gift ideas for a contact\n" +
+                    "/getgiftidea  | retrieves gift ideas for specific or all contacts\n" +
+                    "/addcontact  | adds a new contact\n" +
                     "/notify  | sends notifications\n" +
                     "/stop_notification  | stops notifications\n" + 
                     ############## Others ###################

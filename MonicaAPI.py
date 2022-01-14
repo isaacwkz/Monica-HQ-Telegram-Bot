@@ -139,7 +139,7 @@ def post_reminders(reminder_list):
     # Reminder url
     reminder_url = monica_url + "reminders"
     r=requests.post(reminder_url, headers=auth_header, data=reminder_list)
-    print(r)
+    return r.json()
 
 # POST Journal somehow doesn't appear in the webpage
 # Journal is a dict with 2 keys - title and post
@@ -244,3 +244,115 @@ def post_notes(notes):
     r=requests.post(notes_url, headers=auth_header, data=notes)
     # Returns note that was POST-ed if successfull
     return r.json()['data']
+
+# Returns a dict of gender and associated ID
+# name:str
+# id:int
+def get_gender_id():
+    # Get host URL and append "api"
+    url_file = open('monica host url.txt', 'r')
+    for url in url_file:
+        monica_url = url.rstrip('\0')
+    url_file.close()
+    monica_url = monica_url + "api/"
+    # Get authentication token
+    token_file = open('monica api token.txt', 'r')
+    for token in token_file:
+        monica_token = token.rstrip('\0')
+    token_file.close()
+    # Header for auth
+    auth_header = {'Authorization': 'Bearer ' + token}
+    # Gender url
+    gender_url = monica_url + "genders/"
+    r=requests.get(gender_url, headers=auth_header)
+    gender_raw = r.json()['data']
+    
+    gender_list = []
+    for gender in gender_raw:
+        gender_dict = {"name":gender['name'],
+                       "id":gender['id']}
+        gender_list.append(gender_dict)
+    return gender_list
+
+# POST Contact somehow doesn't appear in the webpage
+# Contact is a dict with 2 keys - title and post
+def post_contact(contact):
+    # Get host URL and append "api"
+    url_file = open('monica host url.txt', 'r')
+    for url in url_file:
+        monica_url = url.rstrip('\0')
+    url_file.close()
+    monica_url = monica_url + "api/"
+    # Get authentication token
+    token_file = open('monica api token.txt', 'r')
+    for token in token_file:
+        monica_token = token.rstrip('\0')
+    token_file.close()
+    # Header for auth
+    auth_header = {'Authorization': 'Bearer ' + token}
+
+    # Contact url
+    contact_url = monica_url + "contacts"
+    r=requests.post(contact_url, headers=auth_header, data=contact)
+    # This returns the POST-ed contact when successful
+    return r.json()
+
+# POST Gift somehow doesn't appear in the webpage
+# Gift is a dict with 2 keys - title and post
+def post_gift(gifts):
+    # Get host URL and append "api"
+    url_file = open('monica host url.txt', 'r')
+    for url in url_file:
+        monica_url = url.rstrip('\0')
+    url_file.close()
+    monica_url = monica_url + "api/"
+    # Get authentication token
+    token_file = open('monica api token.txt', 'r')
+    for token in token_file:
+        monica_token = token.rstrip('\0')
+    token_file.close()
+    # Header for auth
+    auth_header = {'Authorization': 'Bearer ' + token}
+
+    # Contact url
+    gifts_url = monica_url + "gifts"
+    r=requests.post(gifts_url, headers=auth_header, data=gifts)
+    # This returns the POST-ed contact when successful
+    return r.json()
+
+# Get gifts
+def get_gifts(contact_id):
+    # Get host URL and append "api"
+    url_file = open('monica host url.txt', 'r')
+    for url in url_file:
+        monica_url = url.rstrip('\0')
+    url_file.close()
+    monica_url = monica_url + "api/"
+    # Get authentication token
+    token_file = open('monica api token.txt', 'r')
+    for token in token_file:
+        monica_token = token.rstrip('\0')
+    token_file.close()
+    # Header for auth
+    auth_header = {'Authorization': 'Bearer ' + token}
+
+    # Notes url
+    notes_url = monica_url + "contacts/" + str(contact_id) + "/gifts"
+    r=requests.get(notes_url, headers=auth_header)
+    
+    gift_json = r.json()['data']
+    list_gifts = []
+    # Compiles a dict of name:id into a list and spits it out
+    for index, item in enumerate(gift_json):
+        updated_at = gift_json[index]["updated_at"]
+        updated_at = datetime.strptime(updated_at, '%Y-%m-%dT%H:%M:%SZ')
+        # Timezone correction
+        updated_at = updated_at + timedelta(hours=8)
+        notes_dict = {"name":gift_json[index]["name"],
+                      "status":gift_json[index]["status"],
+                      "updated_at":updated_at,
+                      "contact_name":gift_json[index]['contact']["complete_name"]}
+        list_gifts.append(notes_dict)
+
+    list_gifts = sorted(list_gifts, key=lambda d: d['updated_at'], reverse=True)
+    return list_gifts

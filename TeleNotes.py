@@ -97,7 +97,8 @@ def addnotes_fav_done_cb(update: Update, context: CallbackContext) -> int:
     notes = {"body": context.user_data['note_body'],
              "contact_id":context.user_data['note_contact_id'],
              "is_favorited":context.user_data['note_favorite']}
-    MonicaAPI.post_notes(notes)
+    response = MonicaAPI.post_notes(notes)
+    logging.info(str(update.message.chat.username) + " trigger an event : " + str(response))
     update.message.reply_text(text="Done!")
     logging.info(str(update.message.chat.username) + " has POST-ed a note for " + str(context.user_data['note_contact_name']))
     context.user_data.clear()
