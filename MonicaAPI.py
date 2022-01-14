@@ -46,13 +46,13 @@ def get_reminders(days):
         for reminder_index, item in enumerate(reminder_json):
             # Get title
             reminder = {'message':reminder_json[reminder_index]['title'],
-            # Get frequency type
-            'reminder_freq':reminder_json[reminder_index]['frequency_type'],
-            # Get how often to repeat this reminder
-            'reminder_period':reminder_json[reminder_index]['frequency_number'],
-            # Get initial date of reminder and convert to datetime format
-            'reminder_initial_date':reminder_json[reminder_index]['initial_date'],
-            'complete_name':contact_json[contact_index]["complete_name"]}
+                        # Get frequency type
+                        'reminder_freq':reminder_json[reminder_index]['frequency_type'],
+                        # Get how often to repeat this reminder
+                        'reminder_period':reminder_json[reminder_index]['frequency_number'],
+                        # Get initial date of reminder and convert to datetime format
+                        'reminder_initial_date':reminder_json[reminder_index]['initial_date'],
+                        'complete_name':contact_json[contact_index]["complete_name"]}
             reminder['reminder_initial_date'] = datetime.strptime(reminder['reminder_initial_date'], '%Y-%m-%dT%H:%M:%SZ')
             # Now we generate a full list of dates
             # This is list is basically initial date + how often to repeat
@@ -63,11 +63,8 @@ def get_reminders(days):
             if(reminder['reminder_freq'] == "week"):
                 list_dates = list(rrule(WEEKLY, dtstart=reminder['reminder_initial_date'], interval=reminder['reminder_period'], until=(datetime.now() + time_offset + three_month_offset)))
             else:
-                if datetime.now().date() <= reminder['reminder_initial_date'].date() <= (datetime.now().date() + time_offset):
-                    reminder_list.append(reminder)
-                    #date_print = "(" + str(reminder_initial_date.date()) + ": "
-                    #name_print = str(contact_json[contact_index]["complete_name"]) + ") "
-                    #reminders = reminders + date_print + name_print + message + "\n"
+                # No repeats
+                list_dates.append(reminder['reminder_initial_date'])
             # Now that we have the full list
             # We iterate through this list and compare the reminders that are within the today and the next 4 weeks
             # We treat all events as an all day event
@@ -75,14 +72,15 @@ def get_reminders(days):
                 if datetime.now().date() <= reminder_date.date() <= (datetime.now().date() + time_offset):
                     reminder['reminder_initial_date'] = reminder_date
                     reminder_list.append(reminder)
-                    #date_print = "(" + str(reminder_date.date()) + ": "
-                    #name_print = str(contact_json[contact_index]["complete_name"]) + ") "
-                    #reminders = reminders + date_print + name_print + message + "\n"
     # Here we will sort the list
     reminder_list = sorted(reminder_list, key=lambda d: d['reminder_initial_date'])
+    # Bruh moment
+    # There are duplicated entries if the reminder intial date has the current year
+    # This happens when user adds a reminder on time for the year or when there are contacts with unknown birth year
+    reminder_list = [i for n, i in enumerate(reminder_list) if i not in reminder_list[n + 1:]]
     # Ehh... gotta convert this back into string format to preserve compatibility LUL
     # Iterate through contacts to gather a full list of reminders
-    reminders_string = str("")
+    reminders_string = ""
     for reminder in reminder_list:
         date_print = "(" + str(reminder['reminder_initial_date'].date()) + ": "
         name_print = str(reminder["complete_name"]) + ") "
